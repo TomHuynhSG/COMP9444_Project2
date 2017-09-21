@@ -14,7 +14,9 @@ def load_data(glove_dict):
     12500 reviews in the array should be the positive reviews, the 2nd 12500
     reviews should be the negative reviews.
     RETURN: numpy array of data with each row being a review in vectorized
-    form"""
+    form
+    Testing
+    """
     return data
 
 
