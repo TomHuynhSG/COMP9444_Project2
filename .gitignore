@@ -1,7 +1,3 @@
-#Tom Ignore Custom files
-stage1/hw2/data2
-.idea/
-
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
@@ -101,7 +97,12 @@ ENV/
 # mkdocs documentation
 /site
 
+#Tom Ignore Custom files
+
 # mypy
 .mypy_cache/
 *.npy
-stage1/hw2/CBOW_Embeddings.npy
+*.txt
+stage2/hw2sent/data2/
+data2/
+.idea/
