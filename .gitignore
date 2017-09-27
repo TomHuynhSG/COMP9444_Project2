@@ -1,3 +1,8 @@
+#Ignore data folder
+stage1/hw2/data2
+stage1/hw2/data2
+.idea/
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]

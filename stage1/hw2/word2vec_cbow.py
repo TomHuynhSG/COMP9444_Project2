@@ -23,9 +23,11 @@ data, count, dictionary, reverse_dictionary = get_dataset(vocabulary_size)
 # sanity check the batches
 check_skip_window = 2      # How many words to consider left and right.
 batch, labels = generate_batch(data, batch_size=8, skip_window=check_skip_window)
+
 for i in range(8):
-    print(batch[i, :], [reverse_dictionary[batch[i, j]] for j in range(check_skip_window*2)],
-          '->', labels[i, 0], reverse_dictionary[labels[i, 0]])
+     print(batch[i, :], [reverse_dictionary[batch[i, j]] for j in range(check_skip_window*2)],
+           '->', labels[i, 0], reverse_dictionary[labels[i, 0]])
+
 
 # Step 4: Build and train a skip-gram model.
 
