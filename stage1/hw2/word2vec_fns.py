@@ -1,3 +1,8 @@
+# Team - hw2group 428
+# Nguyen Minh Thong Huynh (z5170141)
+# Payal Bawa (z5132512)
+
+
 import tensorflow as tf
 import numpy as np
 import collections
@@ -38,7 +43,7 @@ def generate_batch(data, batch_size, skip_window):
         for j in range(span):
             if j==span//2: # skip middle word - target word
                 continue
-            batch[i,word_pos] = buffer[j] # [skip_window] => middle element
+            batch[i,word_pos] = buffer[j]
             word_pos += 1
         labels[i, 0] = buffer[target]
 

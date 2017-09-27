@@ -1,10 +1,16 @@
+# Team - hw2group 428
+# Nguyen Minh Thong Huynh (z5170141)
+# Payal Bawa (z5132512)
+
 import tensorflow as tf
 import numpy as np
 import glob #this will be useful when reading reviews from file
 import os
 import tarfile
-import numpy as np
+
 batch_size = 50
+
+import numpy as np
 import re
 
 

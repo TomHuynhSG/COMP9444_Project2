@@ -1,7 +1,6 @@
 #Tom Ignore Custom files
 stage1/hw2/data2
 .idea/
-stage1/hw2/*.npy
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
@@ -104,3 +103,5 @@ ENV/
 
 # mypy
 .mypy_cache/
+*.npy
+stage1/hw2/CBOW_Embeddings.npy
