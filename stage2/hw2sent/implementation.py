@@ -12,29 +12,94 @@ batch_size = 50
 
 import numpy as np
 import re
+import string
 
+# def clean_str(string):
+#     """
+#     Tokenization/string cleaning for dataset
+#     Every dataset is lower cased except
+#     """
+#     string = re.sub(r"[^A-Za-z0-9(),!?\'\`]", " ", string)
+#     string = re.sub(r"\'s", " \'s", string)
+#     string = re.sub(r"\'ve", " \'ve", string)
+#     string = re.sub(r"n\'t", " n\'t", string)
+#     string = re.sub(r"\'re", " \'re", string)
+#     string = re.sub(r"\'d", " \'d", string)
+#     string = re.sub(r"\'ll", " \'ll", string)
+#     string = re.sub(r",", " , ", string)
+#     string = re.sub(r"!", " ! ", string)
+#     string = re.sub(r"\(", " \( ", string)
+#     string = re.sub(r"\)", " \) ", string)
+#     string = re.sub(r"\?", " \? ", string)
+#     string = re.sub(r"\s{2,}", " ", string)
+#     string = re.sub(r'<.*?>', string)
+#     return string.strip().lower()
 
-def clean_str(string):
-    """
-    Tokenization/string cleaning for dataset
-    Every dataset is lower cased except
-    """
-    string = re.sub(r"[^A-Za-z0-9(),!?\'\`]", " ", string)     
-    string = re.sub(r"\'s", " \'s", string) 
-    string = re.sub(r"\'ve", " \'ve", string) 
-    string = re.sub(r"n\'t", " n\'t", string) 
-    string = re.sub(r"\'re", " \'re", string) 
-    string = re.sub(r"\'d", " \'d", string) 
-    string = re.sub(r"\'ll", " \'ll", string) 
-    string = re.sub(r",", " , ", string) 
-    string = re.sub(r"!", " ! ", string) 
-    string = re.sub(r"\(", " \( ", string) 
-    string = re.sub(r"\)", " \) ", string) 
-    string = re.sub(r"\?", " \? ", string) 
-    string = re.sub(r"\s{2,}", " ", string) 
-    string = re.sub(r'<.*?>', string)
-    return string.strip().lower()
+# --- Helper function ---
 
+def check_file(filename, expected_bytes):
+    """Download a file if not present, and make sure it's the right size."""
+    if not os.path.exists(filename):
+        print("please make sure {0} exists in the current directory".format(filename))
+    statinfo = os.stat(filename)
+    if statinfo.st_size == expected_bytes:
+        print('Found and verified', filename)
+    else:
+        print(statinfo.st_size)
+        raise Exception(
+            "File {0} didn't have the expected size. Please ensure you have downloaded the assignment files correctly".format(filename))
+    return filename
+
+# Read the data into a list of strings.
+def extract_data(filename):
+    """Extract data from tarball and store as list of strings"""
+    if not os.path.exists(os.path.join(os.path.dirname(__file__), 'data2/')):
+        with tarfile.open(filename, "r") as tarball:
+            dir = os.path.dirname(__file__)
+            tarball.extractall(os.path.join(dir, 'data2/'))
+    return
+
+def read_data_to_array_words():
+    if os.path.exists(os.path.join(os.path.dirname(__file__), "reviews.npy")):
+        print("loading saved parsed reviews, to reparse, delete 'reviews.npy'")
+        reviews = np.load("reviews.npy")
+    else:
+        print("READING DATA")
+
+        dir = os.path.dirname(__file__)
+        file_list_positives = glob.glob(os.path.join(dir,
+                                            'data2/pos/*'))
+        file_list_negatives = glob.glob(os.path.join(dir,
+                                            'data2/neg/*'))
+
+        reviews = []
+        print("Parsing %s positives files" % len(file_list_positives))
+        for f in file_list_positives:
+            with open(f, "r",encoding="utf-8") as openf:
+                s = openf.read()
+                no_punct = ''.join(c for c in s if c not in string.punctuation)
+                reviews.append(no_punct.split())
+
+        print("Parsing %s negatives files" % len(file_list_positives))
+        for f in file_list_negatives:
+            with open(f, "r",encoding="utf-8") as openf:
+                s = openf.read()
+                no_punct = ''.join(c for c in s if c not in string.punctuation)
+                reviews.append(no_punct.split())
+
+        np.save("reviews", reviews)
+    return reviews
+
+def valid_word(word):
+    if word in ['a','an','the']:
+        return False
+    else:
+        return True
+
+def clear_format(word):
+    return word.strip().lower()
+
+# ---------------------
 
 def load_data(glove_dict):
     """
@@ -44,11 +109,46 @@ def load_data(glove_dict):
     reviews should be the negative reviews.
     RETURN: numpy array of data with each row being a review in vectorized
     form
-    Testing
     """
-    #return data
+    data=[]
+    if os.path.exists(os.path.join(os.path.dirname(__file__), "data.npy")):
+        print("loading saved parsed vector data, to reparse, delete 'data.npy'")
+        data = np.load("data.npy")
+    else:
+        filename = check_file('reviews.tar.gz', 14839260)
+        extract_data(filename) # unzip
+        array_words = read_data_to_array_words()
 
-print(2)
+        data=[]
+        for row in array_words:
+            row_temp=[]
+            for word in row:
+                word = clear_format(word)
+                if valid_word(word):
+                    if word in glove_dict:
+                        row_temp.append(glove_dict[word])
+                    else:
+                        row_temp.append(glove_dict['UNK'])
+
+                else:
+                    continue
+
+                if len(row_temp)==40:
+                    break
+
+            if len(row_temp)<40:
+                padding= 40 - len(row_temp)
+                for i in range(padding):
+                    row_temp.append(0)
+
+            data.append(row_temp)
+
+        np.save("data", data)
+
+    return data
+
+
+
 def load_glove_embeddings():
     """
     Load the glove embeddings into a array and a dictionary with words as
@@ -58,24 +158,58 @@ def load_glove_embeddings():
             word_index_dict: a dictionary matching a word in string form to
             its index in the embeddings array. e.g. {"apple": 119"}
     """
-    #print(3)
-    data = open("glove.6B.50d.txt",'r',encoding="utf-8")
-    word_index_dict={}
-    embeddings= np.zeros(shape=(400000,50))
-    count=0
-    for line in data.readlines():
-        row=line.strip().split(' ')
-        embeddings=np.append(embeddings,np.array([row[1:]]),axis=0)
-        word_index_dict[row[0]]=count
-        count=count+1
-   
-    #if you are running on the CSE machines, you can load the glove data from here
-    #data = open("/home/cs9444/public_html/17s2/hw2/glove.6B.50d.txt",'r',encoding="utf-8")
-    
+    if os.path.exists(os.path.join(os.path.dirname(__file__), "embeddings.npy")):
+        print("loading saved parsed embeddings, to reparse, delete 'embeddings.npy'")
+        print("loading saved parsed word_index_dict, to reparse, delete 'word_index_dict.npy'")
+        embeddings = np.load("embeddings.npy")
+        word_index_dict = np.load("word_index_dict.npy").item()
+    else:
+
+        data = open("glove.6B.50d.txt",'r',encoding="utf-8")
+        #if you are running on the CSE machines, you can load the glove data from here
+        #data = open("/home/cs9444/public_html/17s2/hw2/glove.6B.50d.txt",'r',encoding="utf-8")
+
+        embeddings=[]
+        word_index_dict={}
+
+        word_index_dict['UNK']=0
+        embeddings.append([0] * 50)
+
+        row_pos = 1
+        for line in data.readlines():
+            row=line.strip().split(' ')
+            embeddings.append(np.asfarray(row[1:],float))
+            word_index_dict[row[0]]=row_pos
+            row_pos+=1
+
+        np.save("embeddings", embeddings)
+        np.save("word_index_dict", word_index_dict)
+        # embeddings= np.asarray(embeddings) ???
     return embeddings,word_index_dict
-print(3) 
-embd,wrds=  load_glove_embeddings()
-print(wrds['the'])
+
+# -------- test area ---------
+embeddings,word_index_dict=  load_glove_embeddings()
+#print (word_index_dict)
+# key, value = word_index_dict.popitem()
+# print (key)
+# print (value)
+# print (embeddings[value])
+
+data = load_data(word_index_dict)
+sentence_0=data[0]
+print ("Vector index data:")
+print (sentence_0)
+
+print ("Sentence:")
+for index in sentence_0:
+    for key, value in word_index_dict.items():
+        if value == index:
+            print (key)
+
+print ("Vector embeddings for each words (only display first 3 vectors):")
+for index in (sentence_0[:3]):
+    print (embeddings[index])
+# ---------- test area ends ---------
 
 def define_graph(glove_embeddings_arr):
     """
