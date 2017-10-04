@@ -4,15 +4,20 @@
 
 import tensorflow as tf
 import numpy as np
-import glob #this will be useful when reading reviews from file
+import glob  # this will be useful when reading reviews from file
 import os
 import tarfile
 
 batch_size = 50
+numClasses = 2
+maxSeqLength = 40
+numDimensions = 50
+lstmUnits = 200
 
-import numpy as np
+# import numpy as np
 import re
 import string
+
 
 # def clean_str(string):
 #     """
@@ -47,8 +52,10 @@ def check_file(filename, expected_bytes):
     else:
         print(statinfo.st_size)
         raise Exception(
-            "File {0} didn't have the expected size. Please ensure you have downloaded the assignment files correctly".format(filename))
+            "File {0} didn't have the expected size. Please ensure you have downloaded the assignment files correctly".format(
+                filename))
     return filename
+
 
 # Read the data into a list of strings.
 def extract_data(filename):
@@ -59,6 +66,7 @@ def extract_data(filename):
             tarball.extractall(os.path.join(dir, 'data2/'))
     return
 
+
 def read_data_to_array_words():
     if os.path.exists(os.path.join(os.path.dirname(__file__), "reviews.npy")):
         print("loading saved parsed reviews, to reparse, delete 'reviews.npy'")
@@ -68,36 +76,61 @@ def read_data_to_array_words():
 
         dir = os.path.dirname(__file__)
         file_list_positives = glob.glob(os.path.join(dir,
-                                            'data2/pos/*'))
+                                                     'data2/pos/*'))
         file_list_negatives = glob.glob(os.path.join(dir,
-                                            'data2/neg/*'))
+                                                     'data2/neg/*'))
 
         reviews = []
+        # strip_special_chars = re.compile("[^A-Za-z0-9 ]+")
         print("Parsing %s positives files" % len(file_list_positives))
         for f in file_list_positives:
-            with open(f, "r",encoding="utf-8") as openf:
+            with open(f, "r", encoding="utf-8") as openf:
                 s = openf.read()
                 no_punct = ''.join(c for c in s if c not in string.punctuation)
+                # no_punct=re.sub(r'<.*?>', no_punct)
                 reviews.append(no_punct.split())
 
         print("Parsing %s negatives files" % len(file_list_positives))
         for f in file_list_negatives:
-            with open(f, "r",encoding="utf-8") as openf:
+            with open(f, "r", encoding="utf-8") as openf:
                 s = openf.read()
                 no_punct = ''.join(c for c in s if c not in string.punctuation)
+                # no_punct=re.sub(r'<.*?>', no_punct)
                 reviews.append(no_punct.split())
 
         np.save("reviews", reviews)
     return reviews
 
+
 def valid_word(word):
-    if word in ['a','an','the']:
+    if word in ['a', 'an', 'the', 'actor', 'actress', 'movie', 'cast', 'story', 'plot', 'director', 'film', 'all'
+        , 'and', 'are', 'as', 'at', 'be', 'because', 'been', 'before', 'being', 'between', 'both', 'by', 'could',
+                'did', 'do', 'does', 'doing', 'down', 'during', 'each', 'few', 'for', 'from', 'having', 'he', 'hed',
+                'hell', 'hes', 'her', 'here', 'hers', 'herself', 'him', 'himself', 'his', 'how',
+                'i', 'id', 'ill', 'im', 'ive', 'if', 'in', 'into', 'is', 'it', 'its', 'its', 'itself', 'lets', 'me',
+                'my',
+                'myself', 'of', 'off', 'on', 'once', 'only', 'or', 'other', 'ought', 'our', 'ours', 'ourselves', 'out',
+                'own', 'same', 'she', 'shed', 'shell', 'shes', 'so', 'some', 'such', 'than', 'that', 'thats', 'the',
+                'their'
+        , 'theirs', 'them', 'themselves', 'then', 'there', 'theres', 'these', 'they', 'theyd', 'theyll', 'theyre',
+                'theyve', 'this', 'those', 'through', 'to', 'too', 'until', 'up', 'was', 'we', 'wed', 'were', 'weve',
+                'were', 'what', 'whats', 'when', 'whens', 'where', 'wheres', 'which', 'while', 'who', 'whos', 'whom',
+                'with', 'would', 'you', 'youd', 'youll', 'youre', 'youve', 'your', 'yours', 'yourself', 'yourselves']:
         return False
     else:
         return True
 
-def clear_format(word):
-    return word.strip().lower()
+        # def clear_format(row):   #for each sentence
+        # return row.strip().lower()
+
+
+strip_special_chars = re.compile("[^A-Za-z0-9 ]+")
+
+
+def clear_format(string):
+    string = string.lower().replace("<.*?>", " ")
+    return re.sub(strip_special_chars, "", string.lower())
+
 
 # ---------------------
 
@@ -110,20 +143,25 @@ def load_data(glove_dict):
     RETURN: numpy array of data with each row being a review in vectorized
     form
     """
-    data=[]
+    data = []
     if os.path.exists(os.path.join(os.path.dirname(__file__), "data.npy")):
         print("loading saved parsed vector data, to reparse, delete 'data.npy'")
         data = np.load("data.npy")
     else:
         filename = check_file('reviews.tar.gz', 14839260)
-        extract_data(filename) # unzip
+        extract_data(filename)  # unzip
         array_words = read_data_to_array_words()
 
-        data=[]
+        data = []
         for row in array_words:
-            row_temp=[]
-            for word in row:
-                word = clear_format(word)
+            row_temp = []
+            # print(1)
+            # print(row)
+            row1 = clear_format(' '.join(row))
+            sent = row1.split()
+
+            for word in sent:
+                # word = clear_format(word)
                 if valid_word(word):
                     if word in glove_dict:
                         row_temp.append(glove_dict[word])
@@ -133,11 +171,11 @@ def load_data(glove_dict):
                 else:
                     continue
 
-                if len(row_temp)==40:
+                if len(row_temp) == 40:
                     break
 
-            if len(row_temp)<40:
-                padding= 40 - len(row_temp)
+            if len(row_temp) < 40:
+                padding = 40 - len(row_temp)
                 for i in range(padding):
                     row_temp.append(0)
 
@@ -146,7 +184,6 @@ def load_data(glove_dict):
         np.save("data", data)
 
     return data
-
 
 
 def load_glove_embeddings():
@@ -161,54 +198,67 @@ def load_glove_embeddings():
     if os.path.exists(os.path.join(os.path.dirname(__file__), "embeddings.npy")):
         print("loading saved parsed embeddings, to reparse, delete 'embeddings.npy'")
         print("loading saved parsed word_index_dict, to reparse, delete 'word_index_dict.npy'")
-        embeddings = np.load("embeddings.npy")
+        embeddings_np = np.load("embeddings.npy")
         word_index_dict = np.load("word_index_dict.npy").item()
+
     else:
 
-        data = open("glove.6B.50d.txt",'r',encoding="utf-8")
-        #if you are running on the CSE machines, you can load the glove data from here
-        #data = open("/home/cs9444/public_html/17s2/hw2/glove.6B.50d.txt",'r',encoding="utf-8")
+        data = open("glove.6B.50d.txt", 'r', encoding="utf-8")
+        # if you are running on the CSE machines, you can load the glove data from here
+        # data = open("/home/cs9444/public_html/17s2/hw2/glove.6B.50d.txt",'r',encoding="utf-8")
 
-        embeddings=[]
-        word_index_dict={}
+        embeddings = []
+        word_index_dict = {}
 
-        word_index_dict['UNK']=0
+        word_index_dict['UNK'] = 0
         embeddings.append([0] * 50)
+
+        embeddings_np = np.zeros([400001, 50], dtype=np.float32)
 
         row_pos = 1
         for line in data.readlines():
-            row=line.strip().split(' ')
-            embeddings.append(np.asfarray(row[1:],float))
-            word_index_dict[row[0]]=row_pos
-            row_pos+=1
+            row = line.strip().split(' ')
+            embeddings.append(np.asfarray(row[1:], np.float32))
+            word_index_dict[row[0]] = row_pos
+            row_pos += 1
 
-        np.save("embeddings", embeddings)
+        for i in range(len(embeddings)):
+            for j in range(len(embeddings[i])):
+                embeddings_np[i][j] = embeddings[i][j]
+
+        np.save("embeddings", embeddings_np)
         np.save("word_index_dict", word_index_dict)
         # embeddings= np.asarray(embeddings) ???
-    return embeddings,word_index_dict
+    return embeddings_np, word_index_dict
+
 
 # -------- test area ---------
-embeddings,word_index_dict=  load_glove_embeddings()
-#print (word_index_dict)
-# key, value = word_index_dict.popitem()
-# print (key)
+embeddings, word_index_dict = load_glove_embeddings()
+
+# print ('word_index',word_index_dict)
+key, value = word_index_dict.popitem()
+print('key', key)
 # print (value)
-# print (embeddings[value])
+print('embd', embeddings[value])
 
 data = load_data(word_index_dict)
-sentence_0=data[0]
-print ("Vector index data:")
-print (sentence_0)
+print('data', data)
+sentence_0 = data[29]
+print("Vector index data:")
+#
+print(sentence_0)
 
-print ("Sentence:")
+print("Sentence:")
 for index in sentence_0:
     for key, value in word_index_dict.items():
         if value == index:
-            print (key)
+            print(key)
 
-print ("Vector embeddings for each words (only display first 3 vectors):")
-for index in (sentence_0[:3]):
-    print (embeddings[index])
+print("Vector embeddings for each words (only display first 3 vectors):")
+for index in (sentence_0[:20]):
+    print(embeddings[index])
+
+
 # ---------- test area ends ---------
 
 def define_graph(glove_embeddings_arr):
@@ -224,5 +274,35 @@ def define_graph(glove_embeddings_arr):
 
     RETURN: input placeholder, labels placeholder, optimizer, accuracy and loss
     tensors"""
+    print('shape', glove_embeddings_arr.shape)
+    labels = tf.placeholder(tf.float32, [batch_size, numClasses])
+    input_data = tf.placeholder(tf.int32, [batch_size, maxSeqLength])
+    # init_state = tf.zeros([batch_size, lstmUnits])
+    # data1 = tf.Variable(tf.zeros([batch_size, maxSeqLength, numDimensions]),dtype=tf.float32)
 
-    return input_data, labels, optimizer, accuracy, loss
+    #embd = tf.Variable(glove_embeddings_arr) ??????????????????????????
+    embd = glove_embeddings_arr
+
+    # data = tf.nn.embedding_lookup((tf.convert_to_tensor(glove_embeddings_arr)),input_data)
+    data1 = tf.nn.embedding_lookup(embd, input_data)
+    # tf.convert_to_tensor(arg, dtype=tf.float32)
+    # with tf.variable_scope('basic_lstm'):
+    lstmCell = tf.contrib.rnn.LSTMCell(lstmUnits)
+    lstmCell = tf.contrib.rnn.DropoutWrapper(cell=lstmCell, output_keep_prob=0.75)
+    # init_state = lstmCell.zero_state(batch_size, tf.float32)
+    # with tf.variable_scope('dyn_rnn'):
+    value, ops = tf.nn.dynamic_rnn(lstmCell, data1, dtype=tf.float32)
+    # value, final_state = tf.nn.dynamic_rnn(lstmCell, data1, initial_state=init_state)
+    weight = tf.Variable(tf.truncated_normal([lstmUnits, numClasses]))
+    bias = tf.Variable(tf.constant(0.1, shape=[numClasses]))
+    value = tf.transpose(value, [1, 0, 2])
+    last = tf.gather(value, int(value.get_shape()[0]) - 1)
+    prediction = (tf.matmul(last, weight) + bias)
+    correctPred = tf.equal(tf.argmax(prediction, 1), tf.argmax(labels, 1))
+    accuracy = tf.reduce_mean(tf.cast(correctPred, tf.float32))
+    loss = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(logits=prediction, labels=labels))
+    optimizer = tf.train.AdamOptimizer().minimize(loss)
+
+    dropout_keep_prob = tf.placeholder_with_default(1.0, shape=())
+
+    return input_data, labels, dropout_keep_prob, optimizer, accuracy, loss

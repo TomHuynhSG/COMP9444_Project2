@@ -106,3 +106,5 @@ ENV/
 stage2/hw2sent/data2/
 data2/
 .idea/
+checkpoints
+tensorboard
