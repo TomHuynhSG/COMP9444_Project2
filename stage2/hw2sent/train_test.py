@@ -16,7 +16,7 @@ import os
 import implementation as imp
 
 batch_size = imp.batch_size
-iterations = 100200
+iterations = 100000
 seq_length = 40  # Maximum length of sentence
 
 checkpoints_dir = "./checkpoints"
@@ -78,16 +78,17 @@ while train_index < iterations:
     # get training batch
     train_batch_data, train_batch_labels = getTrainBatch(training_data)
     # The training
-    sess.run(optimizer, {input_data: train_batch_data, labels: train_batch_labels})
+    sess.run(optimizer, {input_data: train_batch_data, labels: train_batch_labels,dropout_keep_prob:.7})
 
     # Print the accuracy of both training set and test set
     if (train_index % 50 == 0):
         # Calculate and add summary of trainng batch to tensorboard
-        train_loss_value, train_accuracy_value, train_summary = sess.run(
-            [loss, accuracy, summary_op],
-            {input_data: train_batch_data,
-             labels: train_batch_labels})
-        train_writer.add_summary(train_summary, train_index)
+
+        # train_loss_value, train_accuracy_value, train_summary = sess.run(
+        #     [loss, accuracy, summary_op],
+        #     {input_data: train_batch_data,
+        #      labels: train_batch_labels})
+        # train_writer.add_summary(train_summary, train_index)
 
         # get the test batch
         test_batch_data, test_batch_labels = getTestBatch(training_data)
@@ -98,7 +99,7 @@ while train_index < iterations:
                  labels: test_batch_labels})
         test_writer.add_summary(test_summary, train_index)
 
-        print("Iteration: {0}\t Train acc: {1}\t Test acc: {2}\t".format(train_index, train_accuracy_value, test_accuracy_value))
+        print("Iteration: {0}\t Train acc: {1}\t Test acc: {2}\t".format(train_index, test_accuracy_value, test_accuracy_value))
 
     if (train_index % 10000 == 0 and train_index != 0):
         if not os.path.exists(checkpoints_dir):

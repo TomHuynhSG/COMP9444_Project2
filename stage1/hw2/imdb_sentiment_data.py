@@ -39,7 +39,7 @@ def read_data():
                                         'data2/neg/*')))
     print("Parsing %s files" % len(file_list))
     for f in file_list:
-        with open(f, "r") as openf:
+        with open(f, "r", encoding="utf-8") as openf:
             s = openf.read()
             no_punct = ''.join(c for c in s if c not in string.punctuation)
             data.extend(no_punct.split())

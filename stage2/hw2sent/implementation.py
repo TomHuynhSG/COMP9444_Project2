@@ -12,35 +12,12 @@ batch_size = 50
 numClasses = 2
 maxSeqLength = 40
 numDimensions = 50
-lstmUnits = 200
+lstmUnits = 75
 
 # import numpy as np
 import re
 import string
 
-
-# def clean_str(string):
-#     """
-#     Tokenization/string cleaning for dataset
-#     Every dataset is lower cased except
-#     """
-#     string = re.sub(r"[^A-Za-z0-9(),!?\'\`]", " ", string)
-#     string = re.sub(r"\'s", " \'s", string)
-#     string = re.sub(r"\'ve", " \'ve", string)
-#     string = re.sub(r"n\'t", " n\'t", string)
-#     string = re.sub(r"\'re", " \'re", string)
-#     string = re.sub(r"\'d", " \'d", string)
-#     string = re.sub(r"\'ll", " \'ll", string)
-#     string = re.sub(r",", " , ", string)
-#     string = re.sub(r"!", " ! ", string)
-#     string = re.sub(r"\(", " \( ", string)
-#     string = re.sub(r"\)", " \) ", string)
-#     string = re.sub(r"\?", " \? ", string)
-#     string = re.sub(r"\s{2,}", " ", string)
-#     string = re.sub(r'<.*?>', string)
-#     return string.strip().lower()
-
-# --- Helper function ---
 
 def check_file(filename, expected_bytes):
     """Download a file if not present, and make sure it's the right size."""
@@ -108,20 +85,15 @@ def valid_word(word):
                 'did', 'do', 'does', 'doing', 'down', 'during', 'each', 'few', 'for', 'from', 'having', 'he', 'hed',
                 'hell', 'hes', 'her', 'here', 'hers', 'herself', 'him', 'himself', 'his', 'how',
                 'i', 'id', 'ill', 'im', 'ive', 'if', 'in', 'into', 'is', 'it', 'its', 'its', 'itself', 'lets', 'me',
-                'my',
-                'myself', 'of', 'off', 'on', 'once', 'only', 'or', 'other', 'ought', 'our', 'ours', 'ourselves', 'out',
-                'own', 'same', 'she', 'shed', 'shell', 'shes', 'so', 'some', 'such', 'than', 'that', 'thats', 'the',
-                'their'
-        , 'theirs', 'them', 'themselves', 'then', 'there', 'theres', 'these', 'they', 'theyd', 'theyll', 'theyre',
-                'theyve', 'this', 'those', 'through', 'to', 'too', 'until', 'up', 'was', 'we', 'wed', 'were', 'weve',
-                'were', 'what', 'whats', 'when', 'whens', 'where', 'wheres', 'which', 'while', 'who', 'whos', 'whom',
-                'with', 'would', 'you', 'youd', 'youll', 'youre', 'youve', 'your', 'yours', 'yourself', 'yourselves']:
+                'my', 'has', 'will','myself', 'of', 'off', 'on', 'once', 'only', 'or', 'other', 'ought', 'our', 'ours',
+                'ourselves', 'out', 'own', 'same', 'she', 'shed', 'shell', 'shes', 'so', 'some', 'such', 'than', 'that',
+                'thats', 'the', 'their', 'theirs', 'them', 'themselves', 'then', 'there', 'theres', 'these', 'they',
+                'theyd', 'theyll', 'theyre', 'theyve', 'this', 'those', 'through', 'to', 'too', 'until', 'up', 'was',
+                'we', 'wed', 'weve', 'were', 'what', 'whats', 'when', 'whens', 'where', 'wheres', 'which', 'while', 'who',
+                'whos', 'whom', 'with', 'would', 'you', 'youd', 'youll', 'youre', 'youve', 'your', 'yours', 'yourself', 'yourselves']:
         return False
     else:
         return True
-
-        # def clear_format(row):   #for each sentence
-        # return row.strip().lower()
 
 
 strip_special_chars = re.compile("[^A-Za-z0-9 ]+")
@@ -155,13 +127,10 @@ def load_data(glove_dict):
         data = []
         for row in array_words:
             row_temp = []
-            # print(1)
-            # print(row)
             row1 = clear_format(' '.join(row))
             sent = row1.split()
 
             for word in sent:
-                # word = clear_format(word)
                 if valid_word(word):
                     if word in glove_dict:
                         row_temp.append(glove_dict[word])
@@ -243,7 +212,7 @@ print('embd', embeddings[value])
 
 data = load_data(word_index_dict)
 print('data', data)
-sentence_0 = data[29]
+sentence_0 = data[0]
 print("Vector index data:")
 #
 print(sentence_0)
@@ -272,9 +241,8 @@ def define_graph(glove_embeddings_arr):
         accuracy tensor: name="accuracy"
         loss tensor: name="loss"
 
-    RETURN: input placeholder, labels placeholder, optimizer, accuracy and loss
-    tensors"""
-    print('shape', glove_embeddings_arr.shape)
+    RETURN: input placeholder, labels placeholder, dropout_keep_prob, optimizer, accuracy and loss
+    """
     labels = tf.placeholder(tf.float32, [batch_size, numClasses])
     input_data = tf.placeholder(tf.int32, [batch_size, maxSeqLength])
     # init_state = tf.zeros([batch_size, lstmUnits])
@@ -288,10 +256,12 @@ def define_graph(glove_embeddings_arr):
     # tf.convert_to_tensor(arg, dtype=tf.float32)
     # with tf.variable_scope('basic_lstm'):
     lstmCell = tf.contrib.rnn.LSTMCell(lstmUnits)
-    lstmCell = tf.contrib.rnn.DropoutWrapper(cell=lstmCell, output_keep_prob=0.75)
+
+    #lstmCell = tf.contrib.rnn.DropoutWrapper(cell=lstmCell, output_keep_prob=0.75)
+
     # init_state = lstmCell.zero_state(batch_size, tf.float32)
     # with tf.variable_scope('dyn_rnn'):
-    value, ops = tf.nn.dynamic_rnn(lstmCell, data1, dtype=tf.float32)
+    value, ops = tf.nn.dynamic_rnn(lstmCell, data1, dtype=tf.float32) ## define backprogation through time 40
     # value, final_state = tf.nn.dynamic_rnn(lstmCell, data1, initial_state=init_state)
     weight = tf.Variable(tf.truncated_normal([lstmUnits, numClasses]))
     bias = tf.Variable(tf.constant(0.1, shape=[numClasses]))
@@ -301,7 +271,7 @@ def define_graph(glove_embeddings_arr):
     correctPred = tf.equal(tf.argmax(prediction, 1), tf.argmax(labels, 1))
     accuracy = tf.reduce_mean(tf.cast(correctPred, tf.float32))
     loss = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(logits=prediction, labels=labels))
-    optimizer = tf.train.AdamOptimizer().minimize(loss)
+    optimizer = tf.train.AdamOptimizer(0.0002).minimize(loss)
 
     dropout_keep_prob = tf.placeholder_with_default(1.0, shape=())
 
