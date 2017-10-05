@@ -23,31 +23,37 @@ def generate_batch(data, batch_size, skip_window):
     """
 
     global data_index
+
+    #Conditions
     #assert batch_size % num_skips == 0
     #assert num_skips <= 2 * skip_window
 
-    span = 2 * skip_window + 1  # [ skip_window target skip_window ]
+    # [ skip_window target skip_window ]
+    span_size = 2 * skip_window + 1
 
-    batch = np.ndarray(shape=(batch_size,span-1), dtype=np.int32)
+    batch = np.ndarray(shape=(batch_size,span_size-1), dtype=np.int32)
     labels = np.ndarray(shape=(batch_size, 1), dtype=np.int32)
 
-    buffer = collections.deque(maxlen=span)
-    if data_index + span > len(data):
+    # create buffer to store span window for CBOW
+    word_buffer = collections.deque(maxlen=span_size)
+
+    if data_index + span_size > len(data):
+        # go back to the start if reaching the end of data
         data_index = 0
-    buffer.extend(data[data_index:data_index + span])
-    data_index += span
+        word_buffer.extend(data[data_index:data_index + span_size])
+    data_index += span_size
     for i in range(batch_size):
         target = skip_window  # target label at the center of the buffer
 
         word_pos = 0
-        for j in range(span):
-            if j==span//2: # skip middle word - target word
+        for j in range(span_size):
+            if j==span_size//2: # skip middle word which is target word
                 continue
-            batch[i,word_pos] = buffer[j]
+            batch[i, word_pos] = word_buffer[j]
             word_pos += 1
-        labels[i, 0] = buffer[target]
+        labels[i, 0] = word_buffer[target]
 
-        buffer.append(data[data_index])
+        word_buffer.append(data[data_index])
         data_index = (data_index + 1) % len(data)
 
     return batch, labels
