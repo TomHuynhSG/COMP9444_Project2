@@ -78,7 +78,7 @@ while train_index < iterations:
     # get training batch
     train_batch_data, train_batch_labels = getTrainBatch(training_data)
     # The training
-    sess.run(optimizer, {input_data: train_batch_data, labels: train_batch_labels,dropout_keep_prob:.7})
+    sess.run(optimizer, {input_data: train_batch_data, labels: train_batch_labels, dropout_keep_prob:.7})
 
     # Print the accuracy of both training set and test set
     if (train_index % 50 == 0):

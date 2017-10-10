@@ -14,9 +14,11 @@ maxSeqLength = 40
 numDimensions = 50
 lstmUnits = 75
 
-# import numpy as np
 import re
 import string
+
+
+import sys
 
 
 def check_file(filename, expected_bytes):
@@ -63,17 +65,15 @@ def read_data_to_array_words():
         for f in file_list_positives:
             with open(f, "r", encoding="utf-8") as openf:
                 s = openf.read()
-                no_punct = ''.join(c for c in s if c not in string.punctuation)
-                # no_punct=re.sub(r'<.*?>', no_punct)
-                reviews.append(no_punct.split())
+                #no_punct = ''.join(c for c in s if c not in string.punctuation)
+                reviews.append(s.split())
 
         print("Parsing %s negatives files" % len(file_list_positives))
         for f in file_list_negatives:
             with open(f, "r", encoding="utf-8") as openf:
                 s = openf.read()
-                no_punct = ''.join(c for c in s if c not in string.punctuation)
-                # no_punct=re.sub(r'<.*?>', no_punct)
-                reviews.append(no_punct.split())
+                #no_punct = ''.join(c for c in s if c not in string.punctuation)
+                reviews.append(s.split())
 
         np.save("reviews", reviews)
     return reviews
@@ -81,12 +81,12 @@ def read_data_to_array_words():
 
 def valid_word(word):
     if word in ['a', 'an', 'the', 'actor', 'actress', 'movie', 'cast', 'story', 'plot', 'director', 'film', 'all'
-        , 'and', 'are', 'as', 'at', 'be', 'because', 'been', 'before', 'being', 'between', 'both', 'by', 'could',
+        ,'and', 'are', 'as', 'at', 'be', 'because', 'been', 'before', 'being', 'between', 'both', 'by', 'could',
                 'did', 'do', 'does', 'doing', 'down', 'during', 'each', 'few', 'for', 'from', 'having', 'he', 'hed',
                 'hell', 'hes', 'her', 'here', 'hers', 'herself', 'him', 'himself', 'his', 'how',
                 'i', 'id', 'ill', 'im', 'ive', 'if', 'in', 'into', 'is', 'it', 'its', 'its', 'itself', 'lets', 'me',
-                'my', 'has', 'will','myself', 'of', 'off', 'on', 'once', 'only', 'or', 'other', 'ought', 'our', 'ours',
-                'ourselves', 'out', 'own', 'same', 'she', 'shed', 'shell', 'shes', 'so', 'some', 'such', 'than', 'that',
+                'my', 'has', 'will', 'myself', 'of', 'off', 'on', 'once', 'only', 'or', 'other', 'ought', 'our', 'ours',
+                'ourselves', 'out', 'own', 'she', 'shed', 'shell', 'shes', 'so', 'some', 'such', 'than', 'that',
                 'thats', 'the', 'their', 'theirs', 'them', 'themselves', 'then', 'there', 'theres', 'these', 'they',
                 'theyd', 'theyll', 'theyre', 'theyve', 'this', 'those', 'through', 'to', 'too', 'until', 'up', 'was',
                 'we', 'wed', 'weve', 'were', 'what', 'whats', 'when', 'whens', 'where', 'wheres', 'which', 'while', 'who',
@@ -96,15 +96,17 @@ def valid_word(word):
         return True
 
 
-strip_special_chars = re.compile("[^A-Za-z0-9 ]+")
-
-
 def clear_format(string):
-    string = string.lower().replace("<.*?>", " ")
-    return re.sub(strip_special_chars, "", string.lower())
+    return clean_tag_and_char(string).lower()
 
 
-# ---------------------
+def clean_tag_and_char(string):
+    re_rule = re.compile('<.*?>')
+    clean_tag = re.sub(re_rule, '', string)
+    strip_special_chars = re.compile("[^A-Za-z0-9 ]+")
+    clean_char = re.sub(strip_special_chars, '', clean_tag)
+    return clean_char
+
 
 def load_data(glove_dict):
     """
@@ -115,7 +117,6 @@ def load_data(glove_dict):
     RETURN: numpy array of data with each row being a review in vectorized
     form
     """
-    data = []
     if os.path.exists(os.path.join(os.path.dirname(__file__), "data.npy")):
         print("loading saved parsed vector data, to reparse, delete 'data.npy'")
         data = np.load("data.npy")
@@ -126,11 +127,10 @@ def load_data(glove_dict):
 
         data = []
         for row in array_words:
-            row_temp = []
-            row1 = clear_format(' '.join(row))
-            sent = row1.split()
+            row_temp=[]
+            clear_row = (clear_format(' '.join(row))).split()
+            for word in clear_row:
 
-            for word in sent:
                 if valid_word(word):
                     if word in glove_dict:
                         row_temp.append(glove_dict[word])
@@ -149,6 +149,7 @@ def load_data(glove_dict):
                     row_temp.append(0)
 
             data.append(row_temp)
+            assert len(row_temp) == 40
 
         np.save("data", data)
 
@@ -176,56 +177,55 @@ def load_glove_embeddings():
         # if you are running on the CSE machines, you can load the glove data from here
         # data = open("/home/cs9444/public_html/17s2/hw2/glove.6B.50d.txt",'r',encoding="utf-8")
 
-        embeddings = []
-        word_index_dict = {}
-
-        word_index_dict['UNK'] = 0
-        embeddings.append([0] * 50)
-
         embeddings_np = np.zeros([400001, 50], dtype=np.float32)
+        word_index_dict = {}
+        word_index_dict['UNK'] = 0
 
         row_pos = 1
         for line in data.readlines():
-            row = line.strip().split(' ')
-            embeddings.append(np.asfarray(row[1:], np.float32))
-            word_index_dict[row[0]] = row_pos
-            row_pos += 1
 
-        for i in range(len(embeddings)):
-            for j in range(len(embeddings[i])):
-                embeddings_np[i][j] = embeddings[i][j]
+            row = line.strip().split(' ')
+            target_word = row[0]
+            vector_temp = row[1:]
+
+            assert len(vector_temp) == 50
+
+            embeddings_np[row_pos] = vector_temp
+
+            word_index_dict[target_word] = row_pos
+            row_pos += 1
 
         np.save("embeddings", embeddings_np)
         np.save("word_index_dict", word_index_dict)
-        # embeddings= np.asarray(embeddings) ???
+
     return embeddings_np, word_index_dict
 
 
 # -------- test area ---------
-embeddings, word_index_dict = load_glove_embeddings()
-
-# print ('word_index',word_index_dict)
-key, value = word_index_dict.popitem()
-print('key', key)
-# print (value)
-print('embd', embeddings[value])
-
-data = load_data(word_index_dict)
-print('data', data)
-sentence_0 = data[0]
-print("Vector index data:")
+# embeddings, word_index_dict = load_glove_embeddings()
 #
-print(sentence_0)
-
-print("Sentence:")
-for index in sentence_0:
-    for key, value in word_index_dict.items():
-        if value == index:
-            print(key)
-
-print("Vector embeddings for each words (only display first 3 vectors):")
-for index in (sentence_0[:20]):
-    print(embeddings[index])
+# # print ('word_index',word_index_dict)
+# key, value = word_index_dict.popitem()
+# print('key', key)
+# # print (value)
+# print('embd', embeddings[value])
+#
+# data = load_data(word_index_dict)
+# print('data', data)
+# sentence_0 = data[0]
+# print("Vector index data:")
+# #
+# print(sentence_0)
+#
+# print("Sentence:")
+# for index in sentence_0:
+#     for key, value in word_index_dict.items():
+#         if value == index:
+#             print(key)
+#
+# print("Vector embeddings for each words (only display first 3 vectors):")
+# for index in (sentence_0[:20]):
+#     print(embeddings[index])
 
 
 # ---------- test area ends ---------
