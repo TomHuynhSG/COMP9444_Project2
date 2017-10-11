@@ -16,7 +16,7 @@ import os
 import implementation as imp
 
 batch_size = imp.batch_size
-iterations = 100000
+iterations = 100001
 seq_length = 40  # Maximum length of sentence
 
 checkpoints_dir = "./checkpoints"
@@ -44,6 +44,31 @@ def getTestBatch(training_data):
         else:
             num = randint(len(training_data) - 2000, len(training_data) - 1)
             labels.append([0, 1])
+        arr[i] = training_data[num]
+    return arr, labels
+
+def getTrainBatch2(training_data):
+    labels = []
+    arr = np.zeros([batch_size, seq_length])
+    for i in range(batch_size):
+        if (i % 2 == 0):
+            num = randint(1,11499)
+            labels.append([1,0])
+        else:
+            num = randint(13499,24999)
+            labels.append([0,1])
+        arr[i] = training_data[num]
+    return arr, labels
+
+def getTestBatch2(training_data):
+    labels = []
+    arr = np.zeros([batch_size, seq_length])
+    for i in range(batch_size):
+        num = randint(11499,13499)
+        if (num <= 12499):
+            labels.append([1,0])
+        else:
+            labels.append([0,1])
         arr[i] = training_data[num]
     return arr, labels
 
@@ -78,17 +103,17 @@ while train_index < iterations:
     # get training batch
     train_batch_data, train_batch_labels = getTrainBatch(training_data)
     # The training
-    sess.run(optimizer, {input_data: train_batch_data, labels: train_batch_labels, dropout_keep_prob:.7})
+    sess.run(optimizer, {input_data: train_batch_data, labels: train_batch_labels, dropout_keep_prob: 0.6})
 
     # Print the accuracy of both training set and test set
     if (train_index % 50 == 0):
         # Calculate and add summary of trainng batch to tensorboard
 
-        # train_loss_value, train_accuracy_value, train_summary = sess.run(
-        #     [loss, accuracy, summary_op],
-        #     {input_data: train_batch_data,
-        #      labels: train_batch_labels})
-        # train_writer.add_summary(train_summary, train_index)
+        train_loss_value, train_accuracy_value, train_summary = sess.run(
+            [loss, accuracy, summary_op],
+            {input_data: train_batch_data,
+             labels: train_batch_labels})
+        train_writer.add_summary(train_summary, train_index)
 
         # get the test batch
         test_batch_data, test_batch_labels = getTestBatch(training_data)
@@ -99,7 +124,7 @@ while train_index < iterations:
                  labels: test_batch_labels})
         test_writer.add_summary(test_summary, train_index)
 
-        print("Iteration: {0}\t Train acc: {1}\t Test acc: {2}\t".format(train_index, test_accuracy_value, test_accuracy_value))
+        print("Iteration: {0}\t Train acc: {1}\t Test acc: {2}\t".format(train_index, train_accuracy_value, test_accuracy_value))
 
     if (train_index % 10000 == 0 and train_index != 0):
         if not os.path.exists(checkpoints_dir):
