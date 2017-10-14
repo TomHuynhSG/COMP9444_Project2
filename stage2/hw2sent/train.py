@@ -57,7 +57,7 @@ writer = tf.summary.FileWriter(logdir, sess.graph)
 
 for i in range(iterations):
     batch_data, batch_labels = getTrainBatch()
-    sess.run(optimizer, {input_data: batch_data, labels: batch_labels})
+    sess.run(optimizer, {input_data: batch_data, labels: batch_labels, dropout_keep_prob: 0.5})
     if (i % 50 == 0):
         loss_value, accuracy_value, summary = sess.run(
             [loss, accuracy, summary_op],
@@ -67,7 +67,7 @@ for i in range(iterations):
         print("Iteration: ", i)
         print("loss", loss_value)
         print("acc", accuracy_value)
-    if (i % 10000 == 0 and i != 0):
+    if (i % 1000 == 0 and i != 0):
         if not os.path.exists(checkpoints_dir):
             os.makedirs(checkpoints_dir)
         save_path = all_saver.save(sess, checkpoints_dir +

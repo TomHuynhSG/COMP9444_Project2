@@ -101,9 +101,9 @@ test_writer = tf.summary.FileWriter(test_logdir, sess.graph)
 train_index = 0
 while train_index < iterations:
     # get training batch
-    train_batch_data, train_batch_labels = getTrainBatch(training_data)
+    train_batch_data, train_batch_labels = getTrainBatch2(training_data)
     # The training
-    sess.run(optimizer, {input_data: train_batch_data, labels: train_batch_labels, dropout_keep_prob: 0.6})
+    sess.run(optimizer, {input_data: train_batch_data, labels: train_batch_labels, dropout_keep_prob: 0.5})
 
     # Print the accuracy of both training set and test set
     if (train_index % 50 == 0):
@@ -116,7 +116,7 @@ while train_index < iterations:
         train_writer.add_summary(train_summary, train_index)
 
         # get the test batch
-        test_batch_data, test_batch_labels = getTestBatch(training_data)
+        test_batch_data, test_batch_labels = getTestBatch2(training_data)
         # Calculate and add summary of trainng batch to tensorboard
         test_loss_value, test_accuracy_value, test_summary = sess.run(
                 [loss, accuracy, summary_op],

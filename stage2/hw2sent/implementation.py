@@ -7,18 +7,16 @@ import numpy as np
 import glob  # this will be useful when reading reviews from file
 import os
 import tarfile
+import re
+import string
+import sys
 
-batch_size = 50
+batch_size = 100
 numClasses = 2
 maxSeqLength = 40
 numDimensions = 50
-lstmUnits = 75
+lstmUnits = 50
 
-import re
-import string
-
-
-import sys
 
 
 def check_file(filename, expected_bytes):
@@ -47,6 +45,7 @@ def extract_data(filename):
 
 
 def read_data_to_array_words():
+    """Read review files into array of reviews of words"""
     if os.path.exists(os.path.join(os.path.dirname(__file__), "reviews.npy")):
         print("loading saved parsed reviews, to reparse, delete 'reviews.npy'")
         reviews = np.load("reviews.npy")
@@ -60,19 +59,19 @@ def read_data_to_array_words():
                                                      'data2/neg/*'))
 
         reviews = []
-        # strip_special_chars = re.compile("[^A-Za-z0-9 ]+")
+
+        # processing positive reviews
         print("Parsing %s positives files" % len(file_list_positives))
         for f in file_list_positives:
             with open(f, "r", encoding="utf-8") as openf:
                 s = openf.read()
-                #no_punct = ''.join(c for c in s if c not in string.punctuation)
                 reviews.append(s.split())
 
+        # processing negatives reviews
         print("Parsing %s negatives files" % len(file_list_positives))
         for f in file_list_negatives:
             with open(f, "r", encoding="utf-8") as openf:
                 s = openf.read()
-                #no_punct = ''.join(c for c in s if c not in string.punctuation)
                 reviews.append(s.split())
 
         np.save("reviews", reviews)
@@ -80,6 +79,7 @@ def read_data_to_array_words():
 
 
 def valid_word(word):
+    """Remove all stop words or non-meaningful words"""
     if word in ['a', 'an', 'the', 'actor', 'actress', 'movie', 'cast', 'story', 'plot', 'director', 'film', 'all'
         ,'and', 'are', 'as', 'at', 'be', 'because', 'been', 'before', 'being', 'between', 'both', 'by', 'could',
                 'did', 'do', 'does', 'doing', 'down', 'during', 'each', 'few', 'for', 'from', 'having', 'he', 'hed',
@@ -101,6 +101,7 @@ def clear_format(string):
 
 
 def clean_tag_and_char(string):
+    """Clear out html tag and strange characters"""
     re_rule = re.compile('<.*?>')
     clean_tag = re.sub(re_rule, '', string)
     strip_special_chars = re.compile("[^A-Za-z0-9 ]+")
@@ -227,7 +228,6 @@ def load_glove_embeddings():
 # for index in (sentence_0[:20]):
 #     print(embeddings[index])
 
-
 # ---------- test area ends ---------
 
 def define_graph(glove_embeddings_arr):
@@ -243,36 +243,52 @@ def define_graph(glove_embeddings_arr):
 
     RETURN: input placeholder, labels placeholder, dropout_keep_prob, optimizer, accuracy and loss
     """
-    labels = tf.placeholder(tf.float32, [batch_size, numClasses])
-    input_data = tf.placeholder(tf.int32, [batch_size, maxSeqLength])
-    # init_state = tf.zeros([batch_size, lstmUnits])
-    # data1 = tf.Variable(tf.zeros([batch_size, maxSeqLength, numDimensions]),dtype=tf.float32)
+    labels = tf.placeholder(tf.float32, [batch_size, numClasses], name = "labels")
+    input_data = tf.placeholder(tf.int32, [batch_size, maxSeqLength], name="input_data")
 
-    #embd = tf.Variable(glove_embeddings_arr) ??????????????????????????
     embd = glove_embeddings_arr
 
-    # data = tf.nn.embedding_lookup((tf.convert_to_tensor(glove_embeddings_arr)),input_data)
-    data1 = tf.nn.embedding_lookup(embd, input_data)
-    # tf.convert_to_tensor(arg, dtype=tf.float32)
-    # with tf.variable_scope('basic_lstm'):
-    lstmCell = tf.contrib.rnn.LSTMCell(lstmUnits)
+    data = tf.Variable(tf.zeros([batch_size, maxSeqLength, numDimensions]), dtype=tf.float32)
+    data = tf.nn.embedding_lookup(embd, input_data)
 
-    #lstmCell = tf.contrib.rnn.DropoutWrapper(cell=lstmCell, output_keep_prob=0.75)
 
-    # init_state = lstmCell.zero_state(batch_size, tf.float32)
-    # with tf.variable_scope('dyn_rnn'):
-    value, ops = tf.nn.dynamic_rnn(lstmCell, data1, dtype=tf.float32) ## define backprogation through time 40
-    # value, final_state = tf.nn.dynamic_rnn(lstmCell, data1, initial_state=init_state)
-    weight = tf.Variable(tf.truncated_normal([lstmUnits, numClasses]))
-    bias = tf.Variable(tf.constant(0.1, shape=[numClasses]))
-    value = tf.transpose(value, [1, 0, 2])
-    last = tf.gather(value, int(value.get_shape()[0]) - 1)
-    prediction = (tf.matmul(last, weight) + bias)
+    #lstmCell = tf.contrib.rnn.LSTMCell(lstmUnits)
+
+    # unstack data into time sequence for bidirectional inputs
+    data = tf.unstack(data, maxSeqLength, 1)
+
+    # forward Lstm cells
+    lstm_fw_cell = tf.contrib.rnn.BasicLSTMCell(lstmUnits, forget_bias=1.0)
+    # backward lstm cells
+    lstm_bw_cell = tf.contrib.rnn.BasicLSTMCell(lstmUnits, forget_bias=1.0)
+
+    #value, ops = tf.nn.dynamic_rnn(lstmCell, data, dtype=tf.float32)
+
+    try:
+        value, _, _ = tf.nn.static_bidirectional_rnn(lstm_fw_cell, lstm_bw_cell, data,
+                                              dtype=tf.float32)
+    except Exception: # for old TensorFlow
+        value = tf.nn.static_bidirectional_rnn(lstm_fw_cell, lstm_bw_cell, data,
+                                        dtype=tf.float32)
+
+
+    weight = tf.Variable(tf.truncated_normal([2*lstmUnits, numClasses]))
+    bias = tf.Variable(tf.random_normal([numClasses]))
+
+
+    # value = tf.transpose(value, [1, 0, 2])
+    # last = tf.gather(value, int(value.get_shape()[0]) - 1)
+    #prediction = (tf.matmul(last, weight) + bias)
+
+    prediction = tf.matmul(value[-1], weight) + bias
+
     correctPred = tf.equal(tf.argmax(prediction, 1), tf.argmax(labels, 1))
-    accuracy = tf.reduce_mean(tf.cast(correctPred, tf.float32))
-    loss = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(logits=prediction, labels=labels))
-    optimizer = tf.train.AdamOptimizer(0.0002).minimize(loss)
+    accuracy = tf.reduce_mean(tf.cast(correctPred, tf.float32), name="accuracy")
 
-    dropout_keep_prob = tf.placeholder_with_default(1.0, shape=())
+
+    loss = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(logits=prediction, labels=labels), name="loss")
+    optimizer = tf.train.AdamOptimizer(0.0001).minimize(loss)
+
+    dropout_keep_prob = tf.placeholder_with_default(0.5, shape=())
 
     return input_data, labels, dropout_keep_prob, optimizer, accuracy, loss
